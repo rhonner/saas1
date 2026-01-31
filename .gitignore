@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+vendor/
+.venv/
+__pycache__/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+*.log
+
+# Coverage
+coverage/
+.nyc_output/
