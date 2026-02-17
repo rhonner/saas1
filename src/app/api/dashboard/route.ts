@@ -1,0 +1,103 @@
+import { NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
+import { AppointmentStatus } from "@/generated/prisma/client"
+import { getAuthSession, unauthorizedResponse, serverErrorResponse } from "@/lib/auth-helpers"
+import type { ApiResponse, DashboardStats } from "@/lib/types/api"
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachWeekOfInterval, format } from "date-fns"
+import { ptBR } from "date-fns/locale"
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getAuthSession()
+    if (!session?.user?.id) {
+      return unauthorizedResponse()
+    }
+
+    // Get user for avgAppointmentValue
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { avgAppointmentValue: true },
+    })
+
+    if (!user) {
+      return unauthorizedResponse()
+    }
+
+    const now = new Date()
+    const monthStart = startOfMonth(now)
+    const monthEnd = endOfMonth(now)
+
+    // Get all appointments for current month
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        userId: session.user.id,
+        dateTime: {
+          gte: monthStart,
+          lte: monthEnd,
+        },
+      },
+      select: {
+        id: true,
+        status: true,
+        dateTime: true,
+      },
+    })
+
+    const totalAppointments = appointments.length
+    const confirmed = appointments.filter((a: any) => a.status === AppointmentStatus.CONFIRMED).length
+    const notConfirmed = appointments.filter(
+      (a: any) => a.status === AppointmentStatus.NOT_CONFIRMED || a.status === AppointmentStatus.PENDING
+    ).length
+    const noShow = appointments.filter((a: any) => a.status === AppointmentStatus.NO_SHOW).length
+    const canceled = appointments.filter((a: any) => a.status === AppointmentStatus.CANCELED).length
+
+    const confirmationRate = totalAppointments > 0
+      ? Math.round((confirmed / totalAppointments) * 100)
+      : 0
+    const noShowRate = totalAppointments > 0
+      ? Math.round((noShow / totalAppointments) * 100)
+      : 0
+    const estimatedLoss = Math.round(noShow * user.avgAppointmentValue)
+
+    // Calculate weekly data
+    const weeks = eachWeekOfInterval(
+      { start: monthStart, end: monthEnd },
+      { weekStartsOn: 0 }
+    )
+
+    const weeklyData = weeks.map((weekStart) => {
+      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 })
+
+      const weekAppointments = appointments.filter((a: any) => {
+        const date = new Date(a.dateTime)
+        return date >= weekStart && date <= weekEnd
+      })
+
+      return {
+        week: format(weekStart, "'Sem' d/MM", { locale: ptBR }),
+        total: weekAppointments.length,
+        noShow: weekAppointments.filter((a: any) => a.status === AppointmentStatus.NO_SHOW).length,
+        confirmed: weekAppointments.filter((a: any) => a.status === AppointmentStatus.CONFIRMED).length,
+      }
+    })
+
+    const stats: DashboardStats = {
+      totalAppointments,
+      confirmed,
+      notConfirmed,
+      noShow,
+      canceled,
+      confirmationRate,
+      noShowRate,
+      estimatedLoss,
+      weeklyData,
+    }
+
+    return NextResponse.json<ApiResponse<DashboardStats>>({
+      data: stats,
+    })
+  } catch (error) {
+    console.error("GET dashboard error:", error)
+    return serverErrorResponse()
+  }
+}
