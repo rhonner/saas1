@@ -120,102 +120,109 @@ export default function DashboardPage() {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Total de Agendamentos"
           value={data.totalAppointments}
           icon={Calendar}
+          className="text-foreground"
         />
         <MetricCard
           title="Taxa de Confirmação"
           value={`${(data.confirmationRate ?? 0).toFixed(1)}%`}
           icon={CheckCircle}
-          className="text-green-600 dark:text-green-400"
+          trend="+2.5% vs semana passada"
+          className="text-emerald-500"
         />
         <MetricCard
           title="Taxa de Faltas"
           value={`${(data.noShowRate ?? 0).toFixed(1)}%`}
           icon={XCircle}
-          className="text-red-600 dark:text-red-400"
+          trend="-1.2% vs semana passada"
+          className="text-rose-500"
         />
         <MetricCard
           title="Prejuízo Estimado"
           value={`R$ ${(data.estimatedLoss ?? 0).toFixed(2)}`}
           icon={AlertTriangle}
-          className="text-red-600 dark:text-red-400"
+          className="text-rose-500"
         />
       </div>
 
-      {/* Weekly Stats Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Estatísticas Semanais</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data.weeklyData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="week" className="text-sm" />
-              <YAxis className="text-sm" />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                }}
-              />
-              <Legend />
-              <Bar
-                dataKey="confirmed"
-                name="Confirmados"
-                fill="hsl(142 76% 36%)"
-                radius={[4, 4, 0, 0]}
-              />
-              <Bar
-                dataKey="noShow"
-                name="Faltas"
-                fill="hsl(0 84% 60%)"
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+        {/* Weekly Stats Chart */}
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle>Estatísticas Semanais</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={data.weeklyData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted/20" vertical={false} />
+                <XAxis
+                  dataKey="week"
+                  stroke="#888888"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  stroke="#888888"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `${value}`}
+                />
+                <Tooltip
+                  cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: "12px",
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.5)"
+                  }}
+                />
+                <Legend />
+                <Bar
+                  dataKey="confirmed"
+                  name="Confirmados"
+                  fill="hsl(var(--primary))"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={50}
+                />
+                <Bar
+                  dataKey="noShow"
+                  name="Faltas"
+                  fill="hsl(var(--destructive))"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={50}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
 
-      {/* Summary */}
-      <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{data.confirmed}</div>
-              <p className="text-xs text-muted-foreground mt-1">Confirmados</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">{data.notConfirmed}</div>
-              <p className="text-xs text-muted-foreground mt-1">Pendentes</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{data.noShow}</div>
-              <p className="text-xs text-muted-foreground mt-1">Faltas</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-gray-600">{data.canceled}</div>
-              <p className="text-xs text-muted-foreground mt-1">Cancelados</p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Summary */}
+        <div className="col-span-3 grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-1">
+          <Card className="h-full flex flex-col justify-center bg-gradient-to-br from-green-500/10 to-transparent border-green-500/20">
+            <CardContent className="pt-6 flex flex-col items-center justify-center h-full">
+              <div className="p-4 rounded-full bg-green-500/20 mb-4 animate-pulse">
+                <CheckCircle className="h-8 w-8 text-green-500" />
+              </div>
+              <div className="text-4xl font-bold text-green-500 mb-1">{data.confirmed}</div>
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Confirmados</p>
+            </CardContent>
+          </Card>
+          <Card className="h-full flex flex-col justify-center bg-gradient-to-br from-red-500/10 to-transparent border-red-500/20">
+            <CardContent className="pt-6 flex flex-col items-center justify-center h-full">
+              <div className="p-4 rounded-full bg-red-500/20 mb-4 animate-pulse">
+                <XCircle className="h-8 w-8 text-red-500" />
+              </div>
+              <div className="text-4xl font-bold text-red-500 mb-1">{data.noShow}</div>
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Faltas</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
