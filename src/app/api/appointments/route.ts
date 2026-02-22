@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { AppointmentStatus } from "@/generated/prisma/client"
 import { createAppointmentSchema } from "@/lib/validations/appointment"
 import { getAuthSession, unauthorizedResponse, badRequestResponse, serverErrorResponse } from "@/lib/auth-helpers"
-import type { ApiResponse, AppointmentResponse } from "@/lib/types/api"
+import type { ApiResponse, PaginatedResponse, AppointmentResponse } from "@/lib/types/api"
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
     const patientId = searchParams.get("patientId")
     const startDate = searchParams.get("startDate")
     const endDate = searchParams.get("endDate")
+    const pageParam = searchParams.get("page")
+    const limitParam = searchParams.get("limit")
 
     const where: any = {
       userId: session.user.id,
@@ -56,20 +58,51 @@ export async function GET(request: NextRequest) {
       where.patientId = patientId
     }
 
-    const appointments = await prisma.appointment.findMany({
-      where,
-      include: {
-        patient: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-          },
-        },
-        messageLogs: {
-          orderBy: { sentAt: "desc" },
+    const include = {
+      patient: {
+        select: {
+          id: true,
+          name: true,
+          phone: true,
         },
       },
+      messageLogs: {
+        orderBy: { sentAt: "desc" as const },
+      },
+    }
+
+    // If pagination params are provided, return paginated response
+    if (pageParam) {
+      const page = Math.max(1, parseInt(pageParam) || 1)
+      const limit = Math.min(100, Math.max(1, parseInt(limitParam || "20") || 20))
+      const skip = (page - 1) * limit
+
+      const [appointments, total] = await Promise.all([
+        prisma.appointment.findMany({
+          where,
+          include,
+          orderBy: { dateTime: "asc" },
+          skip,
+          take: limit,
+        }),
+        prisma.appointment.count({ where }),
+      ])
+
+      return NextResponse.json<PaginatedResponse<AppointmentResponse>>({
+        data: appointments,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      })
+    }
+
+    // No pagination: return all results (backward compatible)
+    const appointments = await prisma.appointment.findMany({
+      where,
+      include,
       orderBy: { dateTime: "asc" },
     })
 
@@ -98,6 +131,12 @@ export async function POST(request: NextRequest) {
 
     const { patientId, dateTime, notes } = validation.data
 
+    // Reject appointments in the past
+    const appointmentDate = new Date(dateTime)
+    if (appointmentDate < new Date()) {
+      return badRequestResponse("Não é possível agendar no passado")
+    }
+
     // Verify patient belongs to user
     const patient = await prisma.patient.findFirst({
       where: {
@@ -110,11 +149,17 @@ export async function POST(request: NextRequest) {
       return badRequestResponse("Paciente não encontrado")
     }
 
-    // Check for conflicting appointments
+    // Check for overlapping appointments (1-hour window)
+    const windowStart = new Date(appointmentDate.getTime() - 59 * 60 * 1000)
+    const windowEnd = new Date(appointmentDate.getTime() + 59 * 60 * 1000)
+
     const conflictingAppointment = await prisma.appointment.findFirst({
       where: {
         userId: session.user.id,
-        dateTime: new Date(dateTime),
+        dateTime: {
+          gte: windowStart,
+          lte: windowEnd,
+        },
         status: { notIn: ["CANCELED", "NO_SHOW"] },
       },
     })

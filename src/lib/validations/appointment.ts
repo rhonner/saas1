@@ -5,14 +5,14 @@ const appointmentStatusValues = ["PENDING", "CONFIRMED", "NOT_CONFIRMED", "CANCE
 export const createAppointmentSchema = z.object({
   patientId: z.string().min(1, "Paciente é obrigatório"),
   dateTime: z.string().datetime("Data/hora inválida"),
-  notes: z.string().optional().nullable(),
+  notes: z.string().max(2000, "Observações devem ter no máximo 2000 caracteres").optional().nullable(),
 })
 
 export const updateAppointmentSchema = z.object({
   patientId: z.string().min(1, "Paciente é obrigatório").optional(),
   dateTime: z.string().datetime("Data/hora inválida").optional(),
   status: z.enum(appointmentStatusValues).optional(),
-  notes: z.string().optional().nullable(),
+  notes: z.string().max(2000, "Observações devem ter no máximo 2000 caracteres").optional().nullable(),
 })
 
 export type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>

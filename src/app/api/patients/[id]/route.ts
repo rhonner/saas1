@@ -138,7 +138,8 @@ export async function DELETE(
       where: { id },
     })
 
-    return NextResponse.json<ApiResponse>({
+    return NextResponse.json<ApiResponse<null>>({
+      data: null,
       message: "Paciente excluído com sucesso",
     })
   } catch (error) {

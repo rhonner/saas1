@@ -6,11 +6,16 @@ export type ApiResponse<T = unknown> = {
   message?: string
 }
 
-export type PaginatedResponse<T> = {
-  data: T[]
+export type PaginationMeta = {
   total: number
   page: number
-  pageSize: number
+  limit: number
+  totalPages: number
+}
+
+export type PaginatedResponse<T> = {
+  data: T[]
+  meta: PaginationMeta
 }
 
 export type UserResponse = Omit<User, "password">

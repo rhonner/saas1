@@ -99,12 +99,19 @@ export async function PUT(
       }
     }
 
-    // If dateTime is being changed, check for conflicts
+    // If dateTime is being changed, check for overlapping appointments (1-hour window)
     if (dateTime && new Date(dateTime).getTime() !== existingAppointment.dateTime.getTime()) {
+      const newDateTime = new Date(dateTime)
+      const windowStart = new Date(newDateTime.getTime() - 59 * 60 * 1000)
+      const windowEnd = new Date(newDateTime.getTime() + 59 * 60 * 1000)
+
       const conflictingAppointment = await prisma.appointment.findFirst({
         where: {
           userId: session.user.id,
-          dateTime: new Date(dateTime),
+          dateTime: {
+            gte: windowStart,
+            lte: windowEnd,
+          },
           status: { notIn: ["CANCELED", "NO_SHOW"] },
           id: { not: id },
         },
@@ -175,7 +182,8 @@ export async function DELETE(
       where: { id },
     })
 
-    return NextResponse.json<ApiResponse>({
+    return NextResponse.json<ApiResponse<null>>({
+      data: null,
       message: "Agendamento excluído com sucesso",
     })
   } catch (error) {

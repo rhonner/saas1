@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { createPatientSchema } from "@/lib/validations/patient"
 import { getAuthSession, unauthorizedResponse, badRequestResponse, serverErrorResponse } from "@/lib/auth-helpers"
-import type { ApiResponse, PatientResponse } from "@/lib/types/api"
+import type { ApiResponse, PaginatedResponse, PatientResponse } from "@/lib/types/api"
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,6 +13,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const search = searchParams.get("search")
+    const pageParam = searchParams.get("page")
+    const limitParam = searchParams.get("limit")
 
     const where: any = {
       userId: session.user.id,
@@ -26,6 +28,39 @@ export async function GET(request: NextRequest) {
       ]
     }
 
+    // If pagination params are provided, return paginated response
+    if (pageParam) {
+      const page = Math.max(1, parseInt(pageParam) || 1)
+      const limit = Math.min(100, Math.max(1, parseInt(limitParam || "20") || 20))
+      const skip = (page - 1) * limit
+
+      const [patients, total] = await Promise.all([
+        prisma.patient.findMany({
+          where,
+          orderBy: { name: "asc" },
+          include: {
+            _count: {
+              select: { appointments: true },
+            },
+          },
+          skip,
+          take: limit,
+        }),
+        prisma.patient.count({ where }),
+      ])
+
+      return NextResponse.json<PaginatedResponse<PatientResponse>>({
+        data: patients,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      })
+    }
+
+    // No pagination: return all results (backward compatible)
     const patients = await prisma.patient.findMany({
       where,
       orderBy: { name: "asc" },

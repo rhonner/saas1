@@ -176,6 +176,9 @@
     /* Add subtle background pattern or gradient here if needed for texture */
     background-image: radial-gradient(at top center, oklch(0.15 0.05 260 / 0.2) 0%, transparent 60%);
   }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
 }
 
 /* Glassmorphism Utilities */

@@ -19,9 +19,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -29,8 +40,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, ChevronLeft, ChevronRight, Calendar, Clock } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, Clock, CalendarPlus, MoreVertical } from "lucide-react";
 import { format, startOfWeek, endOfWeek, addWeeks, parseISO, eachDayOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useForm, Controller } from "react-hook-form";
@@ -78,10 +95,18 @@ function getStatusLabel(status: string) {
   }
 }
 
+const statusOptions = [
+  { value: "PENDING", label: "Pendente" },
+  { value: "CONFIRMED", label: "Confirmado" },
+  { value: "CANCELED", label: "Cancelado" },
+  { value: "NO_SHOW", label: "Faltou" },
+];
+
 export default function AgendaPage() {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 0 });
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 0 });
@@ -180,16 +205,17 @@ export default function AgendaPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Tem certeza que deseja excluir este agendamento?")) {
-      await deleteMutation.mutateAsync(id);
+  const handleDeleteConfirm = async () => {
+    if (deleteTarget) {
+      await deleteMutation.mutateAsync(deleteTarget);
+      setDeleteTarget(null);
       setDialogOpen(false);
     }
   };
 
-  const handleStatusChange = async (appointment: any, newStatus: string) => {
+  const handleStatusChange = async (appointmentId: string, newStatus: string) => {
     await updateMutation.mutateAsync({
-      ...appointment,
+      id: appointmentId,
       status: newStatus,
     });
   };
@@ -294,7 +320,7 @@ export default function AgendaPage() {
                   <Button
                     type="button"
                     variant="destructive"
-                    onClick={() => handleDelete(selectedAppointment.id)}
+                    onClick={() => setDeleteTarget(selectedAppointment.id)}
                   >
                     Excluir
                   </Button>
@@ -336,8 +362,41 @@ export default function AgendaPage() {
 
       {/* Week View */}
       {isLoading ? (
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="grid gap-4">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-3">
+                <Skeleton className="h-5 w-48" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {Array.from({ length: 2 }).map((_, j) => (
+                    <div key={j} className="flex items-center justify-between p-3 rounded-lg border">
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="h-4 w-12" />
+                        <Skeleton className="h-4 w-28" />
+                      </div>
+                      <Skeleton className="h-6 w-20" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : !appointments || appointments.length === 0 ? (
+        <div className="flex flex-col items-center justify-center min-h-[300px] gap-3">
+          <CalendarPlus className="h-16 w-16 text-muted-foreground/50" />
+          <div className="text-center">
+            <p className="font-medium text-lg">Nenhum agendamento nesta semana</p>
+            <p className="text-sm text-muted-foreground">
+              Agende sua primeira consulta para começar
+            </p>
+          </div>
+          <Button size="sm" onClick={() => handleOpenDialog()}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Agendamento
+          </Button>
         </div>
       ) : (
         <div className="grid gap-4">
@@ -370,10 +429,12 @@ export default function AgendaPage() {
                         .map((appointment) => (
                           <div
                             key={appointment.id}
-                            onClick={() => handleOpenDialog(appointment)}
-                            className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                            className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
                           >
-                            <div className="flex items-center gap-4">
+                            <div
+                              className="flex items-center gap-4 flex-1 cursor-pointer"
+                              onClick={() => handleOpenDialog(appointment)}
+                            >
                               <div className="flex items-center gap-2 text-sm">
                                 <Clock className="h-4 w-4 text-muted-foreground" />
                                 <span className="font-medium">
@@ -388,6 +449,28 @@ export default function AgendaPage() {
                               <Badge className={getStatusColor(appointment.status)}>
                                 {getStatusLabel(appointment.status)}
                               </Badge>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                    <MoreVertical className="h-4 w-4" />
+                                    <span className="sr-only">Alterar status</span>
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {statusOptions
+                                    .filter((s) => s.value !== appointment.status)
+                                    .map((option) => (
+                                      <DropdownMenuItem
+                                        key={option.value}
+                                        onClick={() => handleStatusChange(appointment.id, option.value)}
+                                      >
+                                        <Badge className={`${getStatusColor(option.value)} mr-2`}>
+                                          {option.label}
+                                        </Badge>
+                                      </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </div>
                         ))}
@@ -399,6 +482,27 @@ export default function AgendaPage() {
           })}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir agendamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este agendamento? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

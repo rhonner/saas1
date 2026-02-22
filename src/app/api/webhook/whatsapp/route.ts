@@ -4,6 +4,12 @@ import { parseResponse } from "@/lib/services/webhook-parser";
 
 export async function POST(request: NextRequest) {
   try {
+    const apiKey =
+      request.headers.get("apikey") || request.headers.get("x-api-key");
+    if (!apiKey || apiKey !== process.env.EVOLUTION_API_KEY) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
 
     const remoteJid = body?.data?.key?.remoteJid;
@@ -27,24 +33,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    const patient = await prisma.patient.findFirst({
-      where: { phone },
-    });
-
-    if (!patient) {
-      return NextResponse.json({ received: true });
-    }
-
+    // Find the appointment most recently sent a confirmation for this phone.
+    // Order by confirmationSentAt desc to match the appointment the patient
+    // is most likely responding to. Also verify tenant consistency.
     const appointment = await prisma.appointment.findFirst({
       where: {
-        patientId: patient.id,
+        patient: { phone },
         status: "PENDING",
         confirmationSentAt: { not: null },
+        dateTime: { gte: new Date() },
       },
-      orderBy: { dateTime: "asc" },
+      orderBy: { confirmationSentAt: "desc" },
+      include: { patient: true },
     });
 
-    if (!appointment) {
+    if (!appointment || appointment.userId !== appointment.patient.userId) {
       return NextResponse.json({ received: true });
     }
 

@@ -27,29 +27,27 @@ export async function GET(request: NextRequest) {
     const monthStart = startOfMonth(now)
     const monthEnd = endOfMonth(now)
 
-    // Get all appointments for current month
-    const appointments = await prisma.appointment.findMany({
-      where: {
-        userId: session.user.id,
-        dateTime: {
-          gte: monthStart,
-          lte: monthEnd,
-        },
-      },
-      select: {
-        id: true,
-        status: true,
-        dateTime: true,
-      },
-    })
+    const monthFilter = {
+      userId: session.user.id,
+      dateTime: { gte: monthStart, lte: monthEnd },
+    }
 
-    const totalAppointments = appointments.length
-    const confirmed = appointments.filter((a: any) => a.status === AppointmentStatus.CONFIRMED).length
-    const notConfirmed = appointments.filter(
-      (a: any) => a.status === AppointmentStatus.NOT_CONFIRMED || a.status === AppointmentStatus.PENDING
-    ).length
-    const noShow = appointments.filter((a: any) => a.status === AppointmentStatus.NO_SHOW).length
-    const canceled = appointments.filter((a: any) => a.status === AppointmentStatus.CANCELED).length
+    // Use efficient count queries instead of loading all appointments
+    const [totalAppointments, confirmed, notConfirmedCount, pendingCount, noShow, canceled, appointments] = await Promise.all([
+      prisma.appointment.count({ where: monthFilter }),
+      prisma.appointment.count({ where: { ...monthFilter, status: "CONFIRMED" } }),
+      prisma.appointment.count({ where: { ...monthFilter, status: "NOT_CONFIRMED" } }),
+      prisma.appointment.count({ where: { ...monthFilter, status: "PENDING" } }),
+      prisma.appointment.count({ where: { ...monthFilter, status: "NO_SHOW" } }),
+      prisma.appointment.count({ where: { ...monthFilter, status: "CANCELED" } }),
+      // Still need individual appointments for weekly chart data
+      prisma.appointment.findMany({
+        where: monthFilter,
+        select: { status: true, dateTime: true },
+      }),
+    ])
+
+    const notConfirmed = notConfirmedCount + pendingCount
 
     const confirmationRate = totalAppointments > 0
       ? Math.round((confirmed / totalAppointments) * 100)
@@ -68,7 +66,7 @@ export async function GET(request: NextRequest) {
     const weeklyData = weeks.map((weekStart) => {
       const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 })
 
-      const weekAppointments = appointments.filter((a: any) => {
+      const weekAppointments = appointments.filter((a) => {
         const date = new Date(a.dateTime)
         return date >= weekStart && date <= weekEnd
       })
@@ -76,8 +74,8 @@ export async function GET(request: NextRequest) {
       return {
         week: format(weekStart, "'Sem' d/MM", { locale: ptBR }),
         total: weekAppointments.length,
-        noShow: weekAppointments.filter((a: any) => a.status === AppointmentStatus.NO_SHOW).length,
-        confirmed: weekAppointments.filter((a: any) => a.status === AppointmentStatus.CONFIRMED).length,
+        noShow: weekAppointments.filter((a) => a.status === AppointmentStatus.NO_SHOW).length,
+        confirmed: weekAppointments.filter((a) => a.status === AppointmentStatus.CONFIRMED).length,
       }
     })
 

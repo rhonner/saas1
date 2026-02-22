@@ -17,9 +17,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -28,7 +39,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Users } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -47,6 +58,7 @@ export default function PacientesPage() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const debouncedSearch = useDebounce(search, 300);
   const { data: patients, isLoading } = usePatients(debouncedSearch);
@@ -101,13 +113,10 @@ export default function PacientesPage() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (
-      confirm(
-        `Tem certeza que deseja excluir o paciente ${name}?\n\nIsso também excluirá todos os agendamentos relacionados.`
-      )
-    ) {
-      await deleteMutation.mutateAsync(id);
+  const handleDeleteConfirm = async () => {
+    if (deleteTarget) {
+      await deleteMutation.mutateAsync(deleteTarget.id);
+      setDeleteTarget(null);
     }
   };
 
@@ -211,7 +220,7 @@ export default function PacientesPage() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Buscar paciente por nome..."
+          placeholder="Buscar por nome, telefone ou email..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10"
@@ -231,13 +240,14 @@ export default function PacientesPage() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-8">
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                  </div>
-                </TableCell>
-              </TableRow>
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                  <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-40" /></TableCell>
+                  <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                </TableRow>
+              ))
             ) : patients && patients.length > 0 ? (
               patients.map((patient) => (
                 <TableRow key={patient.id}>
@@ -259,7 +269,7 @@ export default function PacientesPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDelete(patient.id, patient.name)}
+                        onClick={() => setDeleteTarget({ id: patient.id, name: patient.name })}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                         <span className="sr-only">Excluir</span>
@@ -270,18 +280,54 @@ export default function PacientesPage() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    {search
-                      ? "Nenhum paciente encontrado"
-                      : "Nenhum paciente cadastrado ainda"}
-                  </p>
+                <TableCell colSpan={4} className="text-center py-12">
+                  <div className="flex flex-col items-center gap-3">
+                    <Users className="h-12 w-12 text-muted-foreground/50" />
+                    <div>
+                      <p className="font-medium">
+                        {search ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {search
+                          ? "Tente buscar com outros termos"
+                          : "Cadastre seu primeiro paciente para começar"}
+                      </p>
+                    </div>
+                    {!search && (
+                      <Button size="sm" onClick={() => handleOpenDialog()}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Cadastrar Paciente
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir paciente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o paciente <strong>{deleteTarget?.name}</strong>?
+              Isso também excluirá todos os agendamentos relacionados. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

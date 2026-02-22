@@ -63,6 +63,7 @@ model Patient {
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   appointments Appointment[]
 
+  @@unique([userId, phone])
   @@index([userId])
 }
 

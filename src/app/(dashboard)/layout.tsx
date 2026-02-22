@@ -12,7 +12,10 @@ import {
   Menu,
   LogOut,
   ChevronRight,
+  Moon,
+  Sun,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useSidebarStore } from "@/stores/sidebar-store";
@@ -25,7 +28,7 @@ const navigation = [
   { name: "Configurações", href: "/configuracoes", icon: Settings },
 ];
 
-function SidebarContent({ pathname }: { pathname: string }) {
+function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col bg-sidebar/50 backdrop-blur-xl border-r border-sidebar-border/50">
       <div className="border-b border-sidebar-border/50 p-6 flex items-center justify-between group">
@@ -42,6 +45,7 @@ function SidebarContent({ pathname }: { pathname: string }) {
             <Link
               key={item.name}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "relative group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300 ease-in-out border border-transparent overflow-hidden",
                 isActive
@@ -81,6 +85,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { isOpen, setOpen } = useSidebarStore();
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -121,7 +126,7 @@ export default function DashboardLayout({
       {/* Mobile Sidebar */}
       <Sheet open={isOpen} onOpenChange={setOpen}>
         <SheetContent side="left" className="w-72 p-0 border-r border-sidebar-border/40 bg-background/80 backdrop-blur-xl">
-          <SidebarContent pathname={pathname} />
+          <SidebarContent pathname={pathname} onNavigate={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
 
@@ -148,6 +153,16 @@ export default function DashboardLayout({
                 <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
                 <span className="text-xs font-medium text-muted-foreground">Online</span>
             </div>
+            <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="h-9 w-9"
+            >
+                <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <span className="sr-only">Alternar tema</span>
+            </Button>
             <Button
                 variant="ghost"
                 size="sm"

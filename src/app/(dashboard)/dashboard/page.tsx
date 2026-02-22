@@ -3,12 +3,15 @@
 import { useDashboard } from "@/hooks/use-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Calendar,
   CheckCircle,
   XCircle,
   AlertTriangle,
   TrendingUp,
+  TrendingDown,
+  BarChart3,
 } from "lucide-react";
 import {
   BarChart,
@@ -83,15 +86,59 @@ function getStatusLabel(status: string) {
   }
 }
 
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <Skeleton className="h-9 w-40" />
+        <Skeleton className="h-5 w-64 mt-2" />
+      </div>
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-4" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-20" />
+              <Skeleton className="h-3 w-28 mt-2" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4">
+          <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
+          <CardContent><Skeleton className="h-[350px] w-full" /></CardContent>
+        </Card>
+        <div className="col-span-3 grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-1">
+          <Card><CardContent className="pt-6 flex flex-col items-center justify-center h-full"><Skeleton className="h-16 w-16 rounded-full mb-4" /><Skeleton className="h-10 w-16 mb-1" /><Skeleton className="h-4 w-24" /></CardContent></Card>
+          <Card><CardContent className="pt-6 flex flex-col items-center justify-center h-full"><Skeleton className="h-16 w-16 rounded-full mb-4" /><Skeleton className="h-10 w-16 mb-1" /><Skeleton className="h-4 w-24" /></CardContent></Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function computeWeeklyTrend(weeklyData: Array<{ total: number; noShow: number; confirmed: number }>) {
+  if (!weeklyData || weeklyData.length < 2) return null;
+  const current = weeklyData[weeklyData.length - 1];
+  const previous = weeklyData[weeklyData.length - 2];
+  if (!previous || previous.total === 0) return null;
+
+  const currentRate = current.total > 0 ? (current.confirmed / current.total) * 100 : 0;
+  const previousRate = (previous.confirmed / previous.total) * 100;
+  const diff = currentRate - previousRate;
+
+  return { diff: Math.round(diff * 10) / 10, improving: diff >= 0 };
+}
+
 export default function DashboardPage() {
   const { data, isLoading, error } = useDashboard();
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error) {
@@ -108,7 +155,19 @@ export default function DashboardPage() {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <BarChart3 className="h-16 w-16 text-muted-foreground/50 mb-4" />
+        <p className="text-lg font-semibold">Sem dados para exibir</p>
+        <p className="text-sm text-muted-foreground">
+          Crie agendamentos para visualizar suas métricas
+        </p>
+      </div>
+    );
+  }
+
+  const weeklyTrend = computeWeeklyTrend(data.weeklyData);
 
   return (
     <div className="space-y-6">
@@ -131,14 +190,13 @@ export default function DashboardPage() {
           title="Taxa de Confirmação"
           value={`${(data.confirmationRate ?? 0).toFixed(1)}%`}
           icon={CheckCircle}
-          trend="+2.5% vs semana passada"
+          trend={weeklyTrend ? `${weeklyTrend.diff >= 0 ? "+" : ""}${weeklyTrend.diff}% vs semana anterior` : undefined}
           className="text-emerald-500"
         />
         <MetricCard
           title="Taxa de Faltas"
           value={`${(data.noShowRate ?? 0).toFixed(1)}%`}
           icon={XCircle}
-          trend="-1.2% vs semana passada"
           className="text-rose-500"
         />
         <MetricCard
