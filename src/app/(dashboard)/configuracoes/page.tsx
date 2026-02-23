@@ -16,6 +16,7 @@ import { z } from "zod";
 import { useEffect } from "react";
 import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { PageHeader } from "@/components/layout/page-header";
 
 const MESSAGE_MAX_LENGTH = 1000;
 
@@ -104,12 +105,10 @@ export default function ConfiguracoesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
-        <p className="text-muted-foreground">
-          Gerencie as configurações do sistema
-        </p>
-      </div>
+      <PageHeader
+        title="Configurações"
+        description="Gerencie as configurações do sistema"
+      />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Horários de Notificação */}

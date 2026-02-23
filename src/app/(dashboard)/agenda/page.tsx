@@ -17,7 +17,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -53,6 +52,7 @@ import { ptBR } from "date-fns/locale";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { PageHeader } from "@/components/layout/page-header";
 
 const appointmentSchema = z.object({
   patientId: z.string().min(1, "Selecione um paciente"),
@@ -222,19 +222,18 @@ export default function AgendaPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Agenda</h1>
-          <p className="text-muted-foreground">Gerencie seus agendamentos</p>
-        </div>
+      <PageHeader
+        title="Agenda"
+        description="Gerencie seus agendamentos"
+        action={
+          <Button onClick={() => handleOpenDialog()}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Agendamento
+          </Button>
+        }
+      />
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()}>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Agendamento
-            </Button>
-          </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>
@@ -332,7 +331,6 @@ export default function AgendaPage() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
 
       {/* Week Navigation */}
       <div className="flex items-center justify-between">
@@ -406,7 +404,7 @@ export default function AgendaPage() {
             const isToday = format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
 
             return (
-              <Card key={dayKey} className={isToday ? "border-primary" : ""}>
+              <Card key={dayKey} className={`transition-shadow duration-200 hover:shadow-md ${isToday ? "border-primary" : ""}`}>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2">
                     {format(day, "EEEE, dd 'de' MMMM", { locale: ptBR })}
@@ -429,7 +427,7 @@ export default function AgendaPage() {
                         .map((appointment) => (
                           <div
                             key={appointment.id}
-                            className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                            className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-all duration-200 hover:shadow-sm cursor-pointer"
                           >
                             <div
                               className="flex items-center gap-4 flex-1 cursor-pointer"

@@ -129,13 +129,17 @@ test.describe("Pacientes", () => {
     // Find the row for this patient
     const row = page.locator(`tr:has-text("${deleteName}")`);
 
-    // Set up dialog handler to CANCEL (not delete, just test the functionality exists)
-    page.once('dialog', dialog => dialog.dismiss());
-
-    // Find and click the delete button (trash icon, last button in row)
+    // Click the delete button (trash icon, last button in row) to open AlertDialog
     await row.locator('button').last().click({ timeout: 10000 });
 
-    // Wait for dialog to appear and be dismissed
+    // Wait for AlertDialog to appear
+    await expect(page.locator('[role="alertdialog"]')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Excluir paciente')).toBeVisible();
+
+    // Click "Cancelar" to dismiss (not delete, just test the functionality exists)
+    await page.locator('[role="alertdialog"] button:has-text("Cancelar")').click();
+
+    // Wait for AlertDialog to close
     await page.waitForTimeout(1000);
 
     // Patient should still be there since we cancelled

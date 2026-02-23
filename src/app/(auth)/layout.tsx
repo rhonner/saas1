@@ -22,7 +22,7 @@ export default function AuthLayout({
   if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
       </div>
     );
   }
@@ -31,20 +31,24 @@ export default function AuthLayout({
     <div className="flex min-h-screen items-center justify-center bg-background p-4 relative overflow-hidden">
       {/* Decorative Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[1000px] h-[1000px] rounded-full bg-primary/20 blur-[150px] mix-blend-screen animate-slide-up"></div>
-        <div className="absolute bottom-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-purple-500/10 blur-[130px] mix-blend-screen"></div>
+        <div className="absolute top-[-20%] left-[-10%] w-[1000px] h-[1000px] rounded-full bg-primary/[0.06] dark:bg-primary/[0.08] blur-[150px]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-teal-500/[0.04] dark:bg-teal-500/[0.06] blur-[130px]" />
       </div>
 
-      <div className="w-full max-w-md relative z-10 animate-fade-in">
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-primary/10 mb-4 ring-1 ring-primary/20 shadow-[0_0_20px_rgba(var(--primary),0.3)]">
-            <div className="h-6 w-6 rounded-full bg-primary shadow-[0_0_10px_var(--color-primary)]"></div>
+      <div className="w-full max-w-md relative z-10 animate-scale-in">
+        <div className="mb-8 text-center animate-fade-in-up">
+          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-primary/10 mb-4 ring-1 ring-primary/20">
+            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-sm">C</span>
+            </div>
           </div>
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-400">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-teal-400">
             ConfirmaAí
           </h1>
         </div>
-        <Card className="p-8 border-white/10 shadow-2xl backdrop-blur-3xl bg-card/40">{children}</Card>
+        <Card className="p-8 border-border shadow-xl backdrop-blur-md bg-card">
+          {children}
+        </Card>
       </div>
     </div>
   );

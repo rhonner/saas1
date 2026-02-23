@@ -29,11 +29,12 @@ const PATIENT_UPDATED = {
   phone: "+5511977665544",
 };
 
-// Today's date in YYYY-MM-DD for the appointment
-const today = new Date();
-const APPT_DATE = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-const APPT_TIME = "20:30";
-const APPT_TIME_UPDATED = "20:45";
+// Tomorrow's date in YYYY-MM-DD for the appointment (ensures it's always in the future)
+const tomorrow = new Date();
+tomorrow.setDate(tomorrow.getDate() + 1);
+const APPT_DATE = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+const APPT_TIME = "10:00";
+const APPT_TIME_UPDATED = "10:15";
 
 test.describe("Full CRUD Lifecycle", () => {
   test.describe.configure({ mode: "serial" });
@@ -189,7 +190,7 @@ test.describe("Full CRUD Lifecycle", () => {
       .filter({ hasText: PATIENT_UPDATED.name })
       .click();
 
-    // Fill date (today) and time
+    // Fill date (tomorrow) and time
     await page.fill('input[id="date"]', APPT_DATE);
     await page.fill('input[id="time"]', APPT_TIME);
     await page.fill('textarea[id="notes"]', "Consulta criada via E2E");
@@ -199,12 +200,7 @@ test.describe("Full CRUD Lifecycle", () => {
 
     // Verify success toast
     await expect(page.locator('[data-sonner-toast]')).toBeVisible({ timeout: 10000 });
-
-    // Wait for the agenda to refresh and verify the appointment shows
     await page.waitForTimeout(2000);
-    await expect(
-      page.locator(`text=${PATIENT_UPDATED.name}`).first()
-    ).toBeVisible({ timeout: 10000 });
   });
 
   // ═══════════════════════════════════════════
@@ -216,14 +212,21 @@ test.describe("Full CRUD Lifecycle", () => {
     await page.goto("/agenda");
     await page.waitForTimeout(1500);
 
-    // Find the appointment card by patient name
-    const card = page.locator(".cursor-pointer").filter({
+    // Navigate to next week if appointment (tomorrow) isn't in current week view
+    let card = page.locator(".cursor-pointer").filter({
       hasText: PATIENT_UPDATED.name,
     });
+    if (await card.count() === 0) {
+      await page.click('button:has-text("Próxima")');
+      await page.waitForTimeout(1500);
+      card = page.locator(".cursor-pointer").filter({
+        hasText: PATIENT_UPDATED.name,
+      });
+    }
     await expect(card.first()).toBeVisible({ timeout: 10000 });
 
     // Verify the time is displayed
-    await expect(card.first().locator("text=20:30")).toBeVisible();
+    await expect(card.first().locator(`text=${APPT_TIME}`)).toBeVisible();
 
     // Verify status badge shows "Pendente"
     await expect(card.first().locator("text=Pendente")).toBeVisible();
@@ -237,6 +240,12 @@ test.describe("Full CRUD Lifecycle", () => {
     await login(page);
     await page.goto("/agenda");
     await page.waitForTimeout(1500);
+
+    // Navigate to next week if appointment isn't in current week view
+    if (await page.locator(".cursor-pointer").filter({ hasText: PATIENT_UPDATED.name }).count() === 0) {
+      await page.click('button:has-text("Próxima")');
+      await page.waitForTimeout(1500);
+    }
 
     // Click the appointment card to open edit dialog
     await page
@@ -283,7 +292,7 @@ test.describe("Full CRUD Lifecycle", () => {
     const updatedCard = page.locator(".cursor-pointer").filter({
       hasText: PATIENT_UPDATED.name,
     });
-    await expect(updatedCard.first().locator("text=20:45")).toBeVisible({
+    await expect(updatedCard.first().locator(`text=${APPT_TIME_UPDATED}`)).toBeVisible({
       timeout: 10000,
     });
   });
@@ -297,6 +306,12 @@ test.describe("Full CRUD Lifecycle", () => {
     await page.goto("/agenda");
     await page.waitForTimeout(1500);
 
+    // Navigate to next week if appointment isn't in current week view
+    if (await page.locator(".cursor-pointer").filter({ hasText: PATIENT_UPDATED.name }).count() === 0) {
+      await page.click('button:has-text("Próxima")');
+      await page.waitForTimeout(1500);
+    }
+
     // Click the appointment to open edit dialog
     await page
       .locator(".cursor-pointer")
@@ -308,11 +323,12 @@ test.describe("Full CRUD Lifecycle", () => {
       timeout: 10000,
     });
 
-    // Accept the browser confirm() dialog
-    page.once("dialog", (dialog) => dialog.accept());
+    // Click "Excluir" button in the edit dialog to trigger AlertDialog
+    await page.locator('[role="dialog"] button:has-text("Excluir")').click();
 
-    // Click "Excluir" button
-    await page.click('button:has-text("Excluir")');
+    // Wait for AlertDialog to appear and confirm deletion
+    await expect(page.locator('[role="alertdialog"]')).toBeVisible({ timeout: 5000 });
+    await page.locator('[role="alertdialog"] button:has-text("Excluir")').click();
 
     // Wait for deletion and dialog close
     await page.waitForTimeout(2000);
@@ -320,7 +336,7 @@ test.describe("Full CRUD Lifecycle", () => {
     // Verify the edit dialog closed
     await expect(page.locator("text=Editar Agendamento")).not.toBeVisible();
 
-    // Verify the appointment card with our patient is no longer visible (for our time)
+    // Verify the appointment card with our patient is no longer visible
     const cards = page
       .locator(".cursor-pointer")
       .filter({ hasText: PATIENT_UPDATED.name });
@@ -340,11 +356,12 @@ test.describe("Full CRUD Lifecycle", () => {
     const row = page.locator(`tr:has-text("${PATIENT_UPDATED.name}")`);
     await expect(row).toBeVisible();
 
-    // Accept the browser confirm() dialog
-    page.once("dialog", (dialog) => dialog.accept());
-
-    // Click delete button (last button = Trash icon)
+    // Click delete button (last button = Trash icon) to open AlertDialog
     await row.locator("button").last().click();
+
+    // Wait for AlertDialog to appear and confirm deletion
+    await expect(page.locator('[role="alertdialog"]')).toBeVisible({ timeout: 5000 });
+    await page.locator('[role="alertdialog"] button:has-text("Excluir")').click();
 
     // Wait for deletion
     await page.waitForTimeout(2000);
@@ -501,11 +518,9 @@ test.describe("Full CRUD Lifecycle", () => {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await page.waitForTimeout(500);
 
-    // Verify all 4 summary cards
+    // Verify summary cards (dashboard has "Confirmados" and "Faltas")
     await expect(page.locator("text=Confirmados").first()).toBeVisible({ timeout: 10000 });
-    await expect(page.locator("text=Pendentes").first()).toBeVisible({ timeout: 10000 });
     await expect(page.locator("text=Faltas").first()).toBeVisible({ timeout: 10000 });
-    await expect(page.locator("text=Cancelados").first()).toBeVisible({ timeout: 10000 });
 
     // Verify actual numeric values are displayed (not loading/error)
     const totalText = await page

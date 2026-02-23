@@ -2,7 +2,6 @@
 
 import { useDashboard } from "@/hooks/use-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Calendar,
@@ -10,7 +9,6 @@ import {
   XCircle,
   AlertTriangle,
   TrendingUp,
-  TrendingDown,
   BarChart3,
 } from "lucide-react";
 import {
@@ -23,6 +21,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { PageHeader } from "@/components/layout/page-header";
 
 function MetricCard({
   title,
@@ -30,15 +29,20 @@ function MetricCard({
   icon: Icon,
   trend,
   className,
+  delay = 0,
 }: {
   title: string;
   value: string | number;
   icon: React.ElementType;
   trend?: string;
   className?: string;
+  delay?: number;
 }) {
   return (
-    <Card>
+    <Card
+      className="opacity-0 animate-fade-in-up transition-shadow duration-200 hover:shadow-lg cursor-default"
+      style={{ animationDelay: `${delay}ms`, animationFillMode: "forwards" }}
+    >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <Icon className="h-4 w-4 text-muted-foreground" />
@@ -109,25 +113,44 @@ function DashboardSkeleton() {
       </div>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
-          <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
-          <CardContent><Skeleton className="h-[350px] w-full" /></CardContent>
+          <CardHeader>
+            <Skeleton className="h-6 w-40" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[350px] w-full" />
+          </CardContent>
         </Card>
         <div className="col-span-3 grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-1">
-          <Card><CardContent className="pt-6 flex flex-col items-center justify-center h-full"><Skeleton className="h-16 w-16 rounded-full mb-4" /><Skeleton className="h-10 w-16 mb-1" /><Skeleton className="h-4 w-24" /></CardContent></Card>
-          <Card><CardContent className="pt-6 flex flex-col items-center justify-center h-full"><Skeleton className="h-16 w-16 rounded-full mb-4" /><Skeleton className="h-10 w-16 mb-1" /><Skeleton className="h-4 w-24" /></CardContent></Card>
+          <Card>
+            <CardContent className="pt-6 flex flex-col items-center justify-center h-full">
+              <Skeleton className="h-16 w-16 rounded-full mb-4" />
+              <Skeleton className="h-10 w-16 mb-1" />
+              <Skeleton className="h-4 w-24" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6 flex flex-col items-center justify-center h-full">
+              <Skeleton className="h-16 w-16 rounded-full mb-4" />
+              <Skeleton className="h-10 w-16 mb-1" />
+              <Skeleton className="h-4 w-24" />
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
   );
 }
 
-function computeWeeklyTrend(weeklyData: Array<{ total: number; noShow: number; confirmed: number }>) {
+function computeWeeklyTrend(
+  weeklyData: Array<{ total: number; noShow: number; confirmed: number }>
+) {
   if (!weeklyData || weeklyData.length < 2) return null;
   const current = weeklyData[weeklyData.length - 1];
   const previous = weeklyData[weeklyData.length - 2];
   if (!previous || previous.total === 0) return null;
 
-  const currentRate = current.total > 0 ? (current.confirmed / current.total) * 100 : 0;
+  const currentRate =
+    current.total > 0 ? (current.confirmed / current.total) * 100 : 0;
   const previousRate = (previous.confirmed / previous.total) * 100;
   const diff = currentRate - previousRate;
 
@@ -171,12 +194,10 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Visão geral dos seus agendamentos
-        </p>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description="Visão geral dos seus agendamentos"
+      />
 
       {/* Metrics Grid */}
       <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
@@ -185,73 +206,90 @@ export default function DashboardPage() {
           value={data.totalAppointments}
           icon={Calendar}
           className="text-foreground"
+          delay={0}
         />
         <MetricCard
           title="Taxa de Confirmação"
           value={`${(data.confirmationRate ?? 0).toFixed(1)}%`}
           icon={CheckCircle}
-          trend={weeklyTrend ? `${weeklyTrend.diff >= 0 ? "+" : ""}${weeklyTrend.diff}% vs semana anterior` : undefined}
-          className="text-emerald-500"
+          trend={
+            weeklyTrend
+              ? `${weeklyTrend.diff >= 0 ? "+" : ""}${weeklyTrend.diff}% vs semana anterior`
+              : undefined
+          }
+          className="text-emerald-600 dark:text-emerald-400"
+          delay={75}
         />
         <MetricCard
           title="Taxa de Faltas"
           value={`${(data.noShowRate ?? 0).toFixed(1)}%`}
           icon={XCircle}
-          className="text-rose-500"
+          className="text-rose-600 dark:text-rose-400"
+          delay={150}
         />
         <MetricCard
           title="Prejuízo Estimado"
           value={`R$ ${(data.estimatedLoss ?? 0).toFixed(2)}`}
           icon={AlertTriangle}
-          className="text-rose-500"
+          className="text-rose-600 dark:text-rose-400"
+          delay={225}
         />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
         {/* Weekly Stats Chart */}
-        <Card className="col-span-4">
+        <Card className="col-span-4 opacity-0 animate-fade-in-up" style={{ animationDelay: "200ms", animationFillMode: "forwards" }}>
           <CardHeader>
             <CardTitle>Estatísticas Semanais</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
             <ResponsiveContainer width="100%" height={350}>
               <BarChart data={data.weeklyData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted/20" vertical={false} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  className="stroke-border"
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="week"
-                  stroke="#888888"
+                  stroke="currentColor"
+                  className="text-muted-foreground"
                   fontSize={12}
                   tickLine={false}
                   axisLine={false}
                 />
                 <YAxis
-                  stroke="#888888"
+                  stroke="currentColor"
+                  className="text-muted-foreground"
                   fontSize={12}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(value) => `${value}`}
                 />
                 <Tooltip
-                  cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                  cursor={{ fill: "var(--color-muted)", opacity: 0.3 }}
                   contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    backgroundColor: "var(--color-card)",
+                    border: "1px solid var(--color-border)",
                     borderRadius: "12px",
-                    boxShadow: "0 4px 20px rgba(0,0,0,0.5)"
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+                    color: "var(--color-foreground)",
                   }}
+                  labelStyle={{ color: "var(--color-foreground)" }}
+                  itemStyle={{ color: "var(--color-foreground)" }}
                 />
                 <Legend />
                 <Bar
                   dataKey="confirmed"
                   name="Confirmados"
-                  fill="hsl(var(--primary))"
+                  fill="var(--chart-1-hex)"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={50}
                 />
                 <Bar
                   dataKey="noShow"
                   name="Faltas"
-                  fill="hsl(var(--destructive))"
+                  fill="#e11d48"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={50}
                 />
@@ -260,24 +298,38 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Summary */}
+        {/* Summary Cards */}
         <div className="col-span-3 grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-1">
-          <Card className="h-full flex flex-col justify-center bg-gradient-to-br from-green-500/10 to-transparent border-green-500/20">
+          <Card
+            className="h-full flex flex-col justify-center bg-gradient-to-br from-emerald-500/10 to-transparent border-emerald-500/20 opacity-0 animate-fade-in-up transition-shadow duration-200 hover:shadow-lg"
+            style={{ animationDelay: "275ms", animationFillMode: "forwards" }}
+          >
             <CardContent className="pt-6 flex flex-col items-center justify-center h-full">
-              <div className="p-4 rounded-full bg-green-500/20 mb-4 animate-pulse">
-                <CheckCircle className="h-8 w-8 text-green-500" />
+              <div className="p-4 rounded-full bg-emerald-500/15 mb-4">
+                <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <div className="text-4xl font-bold text-green-500 mb-1">{data.confirmed}</div>
-              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Confirmados</p>
+              <div className="text-4xl font-bold text-emerald-600 dark:text-emerald-400 mb-1">
+                {data.confirmed}
+              </div>
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                Confirmados
+              </p>
             </CardContent>
           </Card>
-          <Card className="h-full flex flex-col justify-center bg-gradient-to-br from-red-500/10 to-transparent border-red-500/20">
+          <Card
+            className="h-full flex flex-col justify-center bg-gradient-to-br from-rose-500/10 to-transparent border-rose-500/20 opacity-0 animate-fade-in-up transition-shadow duration-200 hover:shadow-lg"
+            style={{ animationDelay: "350ms", animationFillMode: "forwards" }}
+          >
             <CardContent className="pt-6 flex flex-col items-center justify-center h-full">
-              <div className="p-4 rounded-full bg-red-500/20 mb-4 animate-pulse">
-                <XCircle className="h-8 w-8 text-red-500" />
+              <div className="p-4 rounded-full bg-rose-500/15 mb-4">
+                <XCircle className="h-8 w-8 text-rose-600 dark:text-rose-400" />
               </div>
-              <div className="text-4xl font-bold text-red-500 mb-1">{data.noShow}</div>
-              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Faltas</p>
+              <div className="text-4xl font-bold text-rose-600 dark:text-rose-400 mb-1">
+                {data.noShow}
+              </div>
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                Faltas
+              </p>
             </CardContent>
           </Card>
         </div>

@@ -88,6 +88,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+
+    // Strip empty strings for optional fields before validation
+    if (body.email === "") body.email = undefined
+    if (body.notes === "") body.notes = undefined
+
     const validation = createPatientSchema.safeParse(body)
 
     if (!validation.success) {
@@ -110,7 +115,11 @@ export async function POST(request: NextRequest) {
       { data: patient, message: "Paciente criado com sucesso" },
       { status: 201 }
     )
-  } catch (error) {
+  } catch (error: any) {
+    // Handle unique constraint violation (duplicate phone for same user)
+    if (error?.code === "P2002") {
+      return badRequestResponse("Telefone já cadastrado para este usuário")
+    }
     console.error("POST patient error:", error)
     return serverErrorResponse()
   }

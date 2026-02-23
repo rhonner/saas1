@@ -15,7 +15,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -44,6 +43,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useDebounce } from "@/hooks/use-debounce";
+import { PageHeader } from "@/components/layout/page-header";
 
 const patientSchema = z.object({
   name: z.string().min(2, "O nome deve ter no mínimo 2 caracteres"),
@@ -98,13 +98,19 @@ export default function PacientesPage() {
 
   const onSubmit = async (data: PatientForm) => {
     try {
+      const cleanedData = {
+        ...data,
+        email: data.email || undefined,
+        notes: data.notes || undefined,
+      };
+
       if (selectedPatient) {
         await updateMutation.mutateAsync({
-          ...data,
+          ...cleanedData,
           id: selectedPatient.id,
         });
       } else {
-        await createMutation.mutateAsync(data);
+        await createMutation.mutateAsync(cleanedData);
       }
       setDialogOpen(false);
       reset();
@@ -122,21 +128,18 @@ export default function PacientesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Pacientes</h1>
-          <p className="text-muted-foreground">
-            Gerencie seus pacientes/clientes
-          </p>
-        </div>
+      <PageHeader
+        title="Pacientes"
+        description="Gerencie seus pacientes/clientes"
+        action={
+          <Button onClick={() => handleOpenDialog()}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Paciente
+          </Button>
+        }
+      />
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()}>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Paciente
-            </Button>
-          </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>
@@ -214,7 +217,6 @@ export default function PacientesPage() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
 
       {/* Search */}
       <div className="relative">
@@ -250,7 +252,7 @@ export default function PacientesPage() {
               ))
             ) : patients && patients.length > 0 ? (
               patients.map((patient) => (
-                <TableRow key={patient.id}>
+                <TableRow key={patient.id} className="transition-colors duration-150 hover:bg-accent/50 cursor-default">
                   <TableCell className="font-medium">{patient.name}</TableCell>
                   <TableCell>{patient.phone}</TableCell>
                   <TableCell className="hidden sm:table-cell">
