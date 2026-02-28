@@ -57,7 +57,13 @@ type PatientForm = z.infer<typeof patientSchema>;
 export default function PacientesPage() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  const [selectedPatient, setSelectedPatient] = useState<{
+    id: string;
+    name: string;
+    phone: string;
+    email?: string | null;
+    notes?: string | null;
+  } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const debouncedSearch = useDebounce(search, 300);
@@ -75,7 +81,7 @@ export default function PacientesPage() {
     resolver: zodResolver(patientSchema),
   });
 
-  const handleOpenDialog = (patient?: any) => {
+  const handleOpenDialog = (patient?: typeof selectedPatient) => {
     if (patient) {
       setSelectedPatient(patient);
       reset({

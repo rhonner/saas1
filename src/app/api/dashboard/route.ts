@@ -55,7 +55,8 @@ export async function GET(request: NextRequest) {
     const noShowRate = totalAppointments > 0
       ? Math.round((noShow / totalAppointments) * 100)
       : 0
-    const estimatedLoss = Math.round(noShow * user.avgAppointmentValue)
+    const avgValue = Number(user.avgAppointmentValue)
+    const estimatedLoss = Number((noShow * avgValue).toFixed(2))
 
     // Calculate weekly data
     const weeks = eachWeekOfInterval(

@@ -9,11 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, Save } from "lucide-react";
+import { AlertCircle, DollarSign, Save } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect } from "react";
 import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PageHeader } from "@/components/layout/page-header";
@@ -25,17 +24,18 @@ const settingsSchema = z.object({
   reminderHoursBefore: z.number().min(1, "Mínimo de 1 hora").max(168, "Máximo de 7 dias (168 horas)"),
   confirmationMessage: z.string().min(10, "Template deve ter no mínimo 10 caracteres").max(MESSAGE_MAX_LENGTH, `Máximo de ${MESSAGE_MAX_LENGTH} caracteres`),
   reminderMessage: z.string().min(10, "Template deve ter no mínimo 10 caracteres").max(MESSAGE_MAX_LENGTH, `Máximo de ${MESSAGE_MAX_LENGTH} caracteres`),
+  avgAppointmentValue: z.number().min(0, "Valor não pode ser negativo"),
 });
 
 type SettingsForm = z.infer<typeof settingsSchema>;
 
-function formatTemplatePreview(template: string): string {
+function formatTemplatePreview(template: string, clinicName?: string): string {
   const sampleDate = addDays(new Date(), 1);
   return template
     .replace(/\{nome\}/g, "Maria Silva")
     .replace(/\{data\}/g, format(sampleDate, "EEEE, dd 'de' MMMM", { locale: ptBR }))
     .replace(/\{hora\}/g, "14:30")
-    .replace(/\{clinica\}/g, "Clínica Exemplo");
+    .replace(/\{clinica\}/g, clinicName || "Sua Clínica");
 }
 
 function SettingsSkeleton() {
@@ -65,35 +65,33 @@ export default function ConfiguracoesPage() {
   const { data: settings, isLoading } = useSettings();
   const updateMutation = useUpdateSettings();
 
+  const defaultValues: SettingsForm = {
+    confirmationHoursBefore: 24,
+    reminderHoursBefore: 6,
+    confirmationMessage: "",
+    reminderMessage: "",
+    avgAppointmentValue: 0,
+  };
+
   const {
     register,
     handleSubmit,
-    reset,
     watch,
     formState: { errors, isDirty },
   } = useForm<SettingsForm>({
     resolver: zodResolver(settingsSchema),
-    defaultValues: {
-      confirmationHoursBefore: 24,
-      reminderHoursBefore: 6,
-      confirmationMessage: "",
-      reminderMessage: "",
-    },
+    defaultValues,
+    values: settings ? {
+      confirmationHoursBefore: settings.confirmationHoursBefore,
+      reminderHoursBefore: settings.reminderHoursBefore,
+      confirmationMessage: settings.confirmationMessage,
+      reminderMessage: settings.reminderMessage,
+      avgAppointmentValue: settings.avgAppointmentValue,
+    } : undefined,
   });
 
   const confirmationMessage = watch("confirmationMessage");
   const reminderMessage = watch("reminderMessage");
-
-  useEffect(() => {
-    if (settings) {
-      reset({
-        confirmationHoursBefore: settings.confirmationHoursBefore,
-        reminderHoursBefore: settings.reminderHoursBefore,
-        confirmationMessage: settings.confirmationMessage,
-        reminderMessage: settings.reminderMessage,
-      });
-    }
-  }, [settings, reset]);
 
   const onSubmit = async (data: SettingsForm) => {
     await updateMutation.mutateAsync(data);
@@ -111,6 +109,42 @@ export default function ConfiguracoesPage() {
       />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Valor Médio da Consulta */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Valor Médio da Consulta
+            </CardTitle>
+            <CardDescription>
+              Usado para calcular o prejuízo estimado por faltas no dashboard
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="avgAppointmentValue">
+                Valor médio (R$)
+              </Label>
+              <Input
+                id="avgAppointmentValue"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="150.00"
+                {...register("avgAppointmentValue", { valueAsNumber: true })}
+              />
+              {errors.avgAppointmentValue && (
+                <p className="text-sm text-destructive">
+                  {errors.avgAppointmentValue.message}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Exemplo: se sua consulta custa R$ 150, o dashboard calculará o prejuízo com base nas faltas
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Horários de Notificação */}
         <Card>
           <CardHeader>
@@ -151,7 +185,7 @@ export default function ConfiguracoesPage() {
                 type="number"
                 min="1"
                 max="168"
-                placeholder="2"
+                placeholder="6"
                 {...register("reminderHoursBefore", { valueAsNumber: true })}
               />
               {errors.reminderHoursBefore && (
@@ -160,7 +194,7 @@ export default function ConfiguracoesPage() {
                 </p>
               )}
               <p className="text-xs text-muted-foreground">
-                Exemplo: 2 horas = enviar lembrete se não confirmou após 2h
+                Exemplo: 6 horas = enviar lembrete se não confirmou após 6h
               </p>
             </div>
           </CardContent>
@@ -219,7 +253,7 @@ export default function ConfiguracoesPage() {
                 <div className="rounded-lg border bg-green-500/5 border-green-500/20 p-3">
                   <p className="text-xs font-medium text-green-700 dark:text-green-400 mb-1">Pré-visualização:</p>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {formatTemplatePreview(confirmationMessage)}
+                    {formatTemplatePreview(confirmationMessage, settings?.clinicName)}
                   </p>
                 </div>
               )}
@@ -249,7 +283,7 @@ export default function ConfiguracoesPage() {
                 <div className="rounded-lg border bg-green-500/5 border-green-500/20 p-3">
                   <p className="text-xs font-medium text-green-700 dark:text-green-400 mb-1">Pré-visualização:</p>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {formatTemplatePreview(reminderMessage)}
+                    {formatTemplatePreview(reminderMessage, settings?.clinicName)}
                   </p>
                 </div>
               )}

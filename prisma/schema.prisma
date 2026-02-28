@@ -41,7 +41,7 @@ model User {
   email                String        @unique
   password             String
   clinicName           String
-  avgAppointmentValue  Float         @default(0)
+  avgAppointmentValue  Decimal       @default(0) @db.Decimal(10, 2)
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 

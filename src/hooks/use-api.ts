@@ -62,6 +62,8 @@ type Settings = {
   reminderHoursBefore: number;
   confirmationMessage: string;
   reminderMessage: string;
+  avgAppointmentValue: number;
+  clinicName: string;
 };
 
 // Helper to unwrap ApiResponse

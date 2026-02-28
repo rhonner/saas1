@@ -11,6 +11,11 @@ export async function GET(request: NextRequest) {
       return unauthorizedResponse()
     }
 
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { avgAppointmentValue: true, clinicName: true },
+    })
+
     let settings = await prisma.settings.findUnique({
       where: { userId: session.user.id },
     })
@@ -25,7 +30,11 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json<ApiResponse<SettingsResponse>>({
-      data: settings,
+      data: {
+        ...settings,
+        avgAppointmentValue: Number(user?.avgAppointmentValue ?? 0),
+        clinicName: user?.clinicName ?? "",
+      },
     })
   } catch (error) {
     console.error("GET settings error:", error)
@@ -60,13 +69,32 @@ export async function PUT(request: NextRequest) {
       })
     }
 
+    const { avgAppointmentValue, ...settingsData } = validation.data
+
     const settings = await prisma.settings.update({
       where: { userId: session.user.id },
-      data: validation.data,
+      data: settingsData,
+    })
+
+    // Update avgAppointmentValue on User model if provided
+    if (avgAppointmentValue !== undefined) {
+      await prisma.user.update({
+        where: { id: session.user.id },
+        data: { avgAppointmentValue },
+      })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { avgAppointmentValue: true, clinicName: true },
     })
 
     return NextResponse.json<ApiResponse<SettingsResponse>>({
-      data: settings,
+      data: {
+        ...settings,
+        avgAppointmentValue: Number(user?.avgAppointmentValue ?? 0),
+        clinicName: user?.clinicName ?? "",
+      },
       message: "Configurações atualizadas com sucesso",
     })
   } catch (error) {

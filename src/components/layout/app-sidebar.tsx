@@ -47,12 +47,11 @@ export function AppSidebar({ pathname, onNavigate }: AppSidebarProps) {
               onClick={onNavigate}
               className={cn(
                 "group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 border border-transparent",
-                "animate-slide-in-left opacity-0",
+                "",
                 isActive
                   ? "bg-primary/10 text-primary border-primary/20"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               )}
-              style={{ animationDelay: `${index * 50}ms`, animationFillMode: "forwards" }}
             >
               {isActive && (
                 <div className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-primary animate-scale-in" />

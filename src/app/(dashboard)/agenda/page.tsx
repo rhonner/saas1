@@ -105,7 +105,13 @@ const statusOptions = [
 export default function AgendaPage() {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<{
+    id: string;
+    dateTime: string;
+    patientId: string;
+    notes?: string | null;
+    status: string;
+  } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 0 });
@@ -158,7 +164,7 @@ export default function AgendaPage() {
     setCurrentWeek(new Date());
   };
 
-  const handleOpenDialog = (appointment?: any) => {
+  const handleOpenDialog = (appointment?: typeof selectedAppointment) => {
     if (appointment) {
       setSelectedAppointment(appointment);
       const appointmentDate = parseISO(appointment.dateTime);
